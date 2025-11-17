@@ -56,7 +56,11 @@ class MinesweeperGame:
         self.flagged = [[False for _ in range(self.cols)] for _ in range(self.rows)]
         self.game_over = False
         self.win = False
+
         self.place_mines()
+
+        self.calculate_numbers()
+        
         self.state = "PLAYING"
 
     def place_mines(self):
@@ -206,13 +210,13 @@ class MinesweeperGame:
                         elif event.key == pygame.K_3:
                             self.init_level(3) #Hard
                     
-                    elif self.state in ["PLAYING", "GAMEOVER", "WIN"]:
-                        if event.type == pygame.MOUSEBUTTONDOWN:
-                            self.handle_click(event.pos, event.button)
-                        if event.type == pygame.KEYDOWN:
-                            if event.key == pygame.K_r: #Restart ke menu
-                                self.state = "MENU"
-                                self.screen = pygame.display.set_mode((400, 300))
+                elif self.state in ["PLAYING", "GAMEOVER", "WIN"]:
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        self.handle_click(event.pos, event.button)
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_r: #Restart ke menu
+                            self.state = "MENU"
+                            self.screen = pygame.display.set_mode((400, 300))
                     
             self.draw()
             pygame.display.flip()
