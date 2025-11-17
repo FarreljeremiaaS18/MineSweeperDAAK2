@@ -29,6 +29,12 @@ TOP_BAR_HEIGHT = 60 #status bar height
 class MinesweeperGame:
     def __init__(self):
         pygame.init()
+        pygame.mixer.init()
+
+        self.sfx_click = pygame.mixer.Sound("Audio/regular_click.WAV")
+        self.sfx_bomb = pygame.mixer.Sound("Audio/boom.WAV")
+        self.sfx_flag = pygame.mixer.Sound("Audio/flag.WAV")
+        
         pygame.display.set_caption("Minesweeper")
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont(None, 24)
@@ -111,19 +117,35 @@ class MinesweeperGame:
        c = x // CELL_SIZE
 
        if button == 1: # Left Click (Buka)
-            if self.flagged[r][c]: return
+            if not any(any(row) for row in self.revealed): #Guarantee first click to be safe
+                if self.grid[r][c] == -1: # if first click is a bomb
+
+                    self.grid[r][c] = 0 # change current cell to safe
+
+                    placed = False
+                    while not placed:
+                        rr = random.randint(0, self.rows - 1)
+                        cc = random.randint(0, self.cols - 1)
+                        if self.grid[rr][cc] != -1 and (rr != r or cc != c):
+                            self.grid[rr][cc] = -1
+                            placed = True
+
+                    self.calculate_numbers() # recalculate numbers after moving bomb
             
             if self.grid[r][c] == -1: # Kena Bom
+                self.sfx_bomb.play() # bomb sound
                 self.revealed[r][c] = True
                 self.game_over = True
                 self.state = "GAMEOVER"
                 self.reveal_all_mines()
             else:
+                self.sfx_click.play() # click sound
                 self.flood_fill(r, c)
                 self.check_win()
 
        elif button == 3: # Right Click (Flag)
             if not self.revealed[r][c]:
+                self.sfx_flag.play() # flag sound
                 self.flagged[r][c] = not self.flagged[r][c]
 
     def reveal_all_mines(self):
