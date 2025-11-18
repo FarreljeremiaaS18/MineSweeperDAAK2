@@ -9,7 +9,8 @@ RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 GREEN = (0, 128, 0)
 GRAY = (192, 192, 192)
-DARK_GREY = (128, 128, 128)
+DARK_GRAY = (128, 128, 128)
+LIGHT_GRAY = (220, 220, 220)
 
 #Number Colors
 NUMBER_COLORS = {
@@ -41,11 +42,15 @@ class MinesweeperGame:
         self.large_font = pygame.font.SysFont(None, 30, bold=True)
         self.state = 'MENU'  # MENU, PLAYING, GAME_OVER, WIN
         self.screen = pygame.display.set_mode((400, 300)) #Ukuran menu awal
+
+        self.start_time = 0
+        self.elapsed_time = 0
+        self.timer_active = False
     
     #Level Initialization
     def init_level(self, difficulty):
         if difficulty == 1: #Easy
-            self.rows, self.cols, self.mines = 9, 9, 10
+            self.rows, self.cols, self.mines = 9, 12, 15
         elif difficulty == 2: #Medium
             self.rows, self.cols, self.mines = 16, 16, 40
         elif difficulty == 3: #Hard
@@ -55,6 +60,11 @@ class MinesweeperGame:
         self.width = self.cols * CELL_SIZE
         self.height = (self.rows * CELL_SIZE) + TOP_BAR_HEIGHT
         self.screen = pygame.display.set_mode((self.width, self.height))
+
+        #timer
+        self.start_time = pygame.time.get_ticks()
+        self.elapsed_time = 0
+        self.timer_active = True
 
         #set data
         self.grid = [[0 for _ in range(self.cols)] for _ in range(self.rows)] #0=empty, -1=mine
@@ -138,6 +148,7 @@ class MinesweeperGame:
                 self.game_over = True
                 self.state = "GAMEOVER"
                 self.reveal_all_mines()
+                self.timer_active = False
             else:
                 self.sfx_click.play() # click sound
                 self.flood_fill(r, c)
@@ -160,12 +171,13 @@ class MinesweeperGame:
         if count_revealed == total_safe_cells:
             self.win = True
             self.state = "WIN"
+            self.timer_active = False
     def draw(self):
         self.screen.fill(GRAY)
         
         #Draw Menu
         if self.state == "MENU":
-            self.screen.fill(DARK_GREY)
+            self.screen.fill(DARK_GRAY)
             title = self.large_font.render("MINESWEEPER", True, WHITE)
             t1 = self.font.render("BEGINNER", True, WHITE)
             t2 = self.font.render("INTERMEDIATE", True, WHITE)
@@ -177,17 +189,38 @@ class MinesweeperGame:
             self.screen.blit(t3, (140, 200))
             return
         
-        #status bar
-        pygame.draw.rect(self.screen, DARK_GREY, (0, 0, self.width, TOP_BAR_HEIGHT))
+        #STATUS BAR
+        pygame.draw.rect(self.screen, DARK_GRAY, (0, 0, self.width, TOP_BAR_HEIGHT))
+
+        text_y = (TOP_BAR_HEIGHT - self.large_font.get_height()) // 2
+
+        #BOMB COUNTER
+        flags_used = sum(row.count(True) for row in self.flagged)
+        mines_left = self.mines - flags_used
+        text_mines = self.large_font.render(f"Bomb: {mines_left}", True, RED)
+        self.screen.blit(text_mines, (10, text_y))
+
+        #TIMER
+        minutes = self.elapsed_time // 60
+        seconds = self.elapsed_time % 60
+        time_text = f"{minutes:01d}:{seconds:02d}"
+        text_timer = self.large_font.render(time_text, True, RED)
+
+        timer_x = self.width - text_timer.get_width() - 10 
+        self.screen.blit(text_timer, (timer_x, text_y))
+
+        #STATUS MSG
         msg = ""
         if self.state == "PLAYING":
             msg = "GudLuck!"
         elif self.state == "GAMEOVER":
-            msg = "BOOM! Game Over!"
+            msg = "Game Over!"
         elif self.state == "WIN":
             msg = "You Win!"
+            
         text_status = self.large_font.render(msg, True, WHITE)
-        self.screen.blit(text_status, (10, 20))
+        status_x = (self.width // 2) - (text_status.get_width() // 2)
+        self.screen.blit(text_status, (status_x, text_y))
 
         #GRID
         for r in range(self.rows):
@@ -195,7 +228,7 @@ class MinesweeperGame:
                 rect = pygame.Rect(c * CELL_SIZE, TOP_BAR_HEIGHT + r * CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
                 if self.revealed[r][c]:
-                    pygame.draw.rect(self.screen, WHITE, rect)
+                    pygame.draw.rect(self.screen, GRAY, rect)
                     pygame.draw.rect(self.screen, BLACK, rect, 1) #bordernya
 
                     val = self.grid[r][c]
@@ -207,8 +240,13 @@ class MinesweeperGame:
                         self.screen.blit(text, text_rect)
                 else:
                     #kotak tertutup
-                    pygame.draw.rect(self.screen, Grey_3D_Up := (220, 220, 220), rect)
-                    pygame.draw.rect(self.screen, DARK_GREY, rect, 2) #bordernya
+                    pygame.draw.rect(self.screen, GRAY, rect)
+
+                    #3D BORDERS
+                    pygame.draw.line(self.screen, WHITE, (rect.left, rect.bottom), (rect.left, rect.top))
+                    pygame.draw.line(self.screen, WHITE, (rect.right, rect.top), (rect.left, rect.top))
+                    pygame.draw.line(self.screen, DARK_GRAY, (rect.right - 1, rect.top), (rect.right - 1, rect.bottom))
+                    pygame.draw.line(self.screen, DARK_GRAY, (rect.left, rect.bottom - 1), (rect.right, rect.bottom - 1))
 
                     if self.flagged[r][c]: #flag (segitiga merah)
                         p1 = (rect.centerx - 5, rect.centery - 5)
@@ -218,6 +256,9 @@ class MinesweeperGame:
     
     def run(self):
         while True:
+            if self.timer_active:
+                self.elapsed_time = (pygame.time.get_ticks() - self.start_time) // 1000
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
