@@ -35,6 +35,7 @@ class MinesweeperGame:
         self.sfx_click = pygame.mixer.Sound("Audio/regular_click.WAV")
         self.sfx_bomb = pygame.mixer.Sound("Audio/boom.WAV")
         self.sfx_flag = pygame.mixer.Sound("Audio/flag.WAV")
+        self.sfx_victory = pygame.mixer.Sound("Audio/victory.WAV")
         
         pygame.display.set_caption("Minesweeper")
         self.clock = pygame.time.Clock()
@@ -109,9 +110,11 @@ class MinesweeperGame:
             return
         if self.revealed[r][c] or self.flagged[r][c]:
             return
+        
         self.revealed[r][c] = True
 
-        #Jika sel kosong, lanjutkan ke tetangga
+        #If a cell has a number (1-8), stop flood fill
+        #Only continue if the cell is empty (0)
         if self.grid[r][c] == 0:
             for i in range(max(0, r-1), min(self.rows, r+2)):
                 for j in range(max(0, c-1), min(self.cols, c+2)):
@@ -121,29 +124,39 @@ class MinesweeperGame:
        if self.state != "PLAYING": return
 
        x, y = pos
-       if y < TOP_BAR_HEIGHT: return #Klik di status bar diabaikan
+       if y < TOP_BAR_HEIGHT: return 
        
        r = (y - TOP_BAR_HEIGHT) // CELL_SIZE
        c = x // CELL_SIZE
 
        if button == 1: # Left Click (Buka)
             if not any(any(row) for row in self.revealed): #Guarantee first click to be safe
-                if self.grid[r][c] == -1: # if first click is a bomb
+                cells_to_clear = [(r,c)] # cells to be cleared on first click
 
-                    self.grid[r][c] = 0 # change current cell to safe
+                for i in range(max(0, r-1), min(self.rows, r+2)):
+                    for j in range(max(0, c-1), min(self.cols, c+2)):
+                        if (i,j) != (r,c): # ignore the clicked cell
+                            cells_to_clear.append((i,j))
 
+                mines_to_move = [] #list of mines to be relocated
+                for cr, cc in cells_to_clear:
+                    if self.grid[cr][cc] == -1:
+                        self.grid[cr][cc] = 0
+                        mines_to_move.append((cr, cc))
+
+                for _ in mines_to_move:
                     placed = False
                     while not placed:
                         rr = random.randint(0, self.rows - 1)
                         cc = random.randint(0, self.cols - 1)
-                        if self.grid[rr][cc] != -1 and (rr != r or cc != c):
+                        if self.grid[rr][cc] != -1 and (rr, cc) not in cells_to_clear: #make sure new location is not a mine and not in cleared cells
                             self.grid[rr][cc] = -1
                             placed = True
+                self.calculate_numbers() #recalculate numbers after moving mines
 
-                    self.calculate_numbers() # recalculate numbers after moving bomb
             
-            if self.grid[r][c] == -1: # Kena Bom
-                self.sfx_bomb.play() # bomb sound
+            if self.grid[r][c] == -1: #clicked on a mine
+                self.sfx_bomb.play() #mine sound
                 self.revealed[r][c] = True
                 self.game_over = True
                 self.state = "GAMEOVER"
@@ -156,8 +169,16 @@ class MinesweeperGame:
 
        elif button == 3: # Right Click (Flag)
             if not self.revealed[r][c]:
-                self.sfx_flag.play() # flag sound
-                self.flagged[r][c] = not self.flagged[r][c]
+
+                if self.flagged[r][c]:
+                    self.sfx_flag.play() #flag sound
+                    self.flagged[r][c] = False
+
+                else:
+                    flags_used = sum(row.count(True) for row in self.flagged) #count current flags
+                    if flags_used < self.mines:
+                        self.sfx_flag.play() #flag sound
+                        self.flagged[r][c] = True
 
     def reveal_all_mines(self):
         for r in range(self.rows):
@@ -172,6 +193,7 @@ class MinesweeperGame:
             self.win = True
             self.state = "WIN"
             self.timer_active = False
+            self.sfx_victory.play()#victory sound
     def draw(self):
         self.screen.fill(GRAY)
         
