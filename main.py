@@ -7,7 +7,6 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
-GREEN = (0, 128, 0)
 GRAY = (192, 192, 192)
 DARK_GRAY = (128, 128, 128)
 LIGHT_GRAY = (220, 220, 220)
@@ -39,8 +38,9 @@ class MinesweeperGame:
         
         pygame.display.set_caption("Minesweeper")
         self.clock = pygame.time.Clock()
-        self.font = pygame.font.SysFont(None, 24)
-        self.large_font = pygame.font.SysFont(None, 30, bold=True)
+        self.font = pygame.font.SysFont("arial", 22)
+        self.large_font = pygame.font.SysFont("arial", 24, bold=True)
+        self.huge_font = pygame.font.SysFont("arial", 50, bold=True) 
         self.state = 'MENU'  # MENU, PLAYING, GAME_OVER, WIN
         self.screen = pygame.display.set_mode((400, 300)) #Ukuran menu awal
 
@@ -194,6 +194,7 @@ class MinesweeperGame:
             self.state = "WIN"
             self.timer_active = False
             self.sfx_victory.play()#victory sound
+
     def draw(self):
         self.screen.fill(GRAY)
         
@@ -310,4 +311,3 @@ class MinesweeperGame:
 if __name__ == "__main__":
     game = MinesweeperGame()
     game.run()
-
